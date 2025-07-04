@@ -1,0 +1,13 @@
+{
+  "svs_score": 80,
+  "go_decision": "go",
+  "score_breakdown": {
+    "docking": 20,
+    "adme_pk": 20,
+    "toxicity": 10,
+    "druggability": 12,
+    "drug_likeness": 5,
+    "off_target": 13
+  },
+  "failure_rationale": []
+}

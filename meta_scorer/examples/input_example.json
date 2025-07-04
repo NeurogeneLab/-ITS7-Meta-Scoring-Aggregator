@@ -1,0 +1,34 @@
+{
+  "docking": {
+    "affinity_kcal": -8.6,
+    "rmsd": 2.1,
+    "num_converged_poses": 4
+  },
+  "adme_pk": {
+    "logP": 2.3,
+    "HIA": "high",
+    "half_life_hr": 3.4,
+    "CYP_inhibition": false,
+    "clearance": "acceptable"
+  },
+  "toxicity": {
+    "toxicity_flag": true,
+    "num_models_flagged": 1,
+    "high_risk_models": []
+  },
+  "druggability": {
+    "pocket_score": 0.78,
+    "volume": 420,
+    "hydrophobicity": 0.6,
+    "polarity": 0.3
+  },
+  "drug_likeness": {
+    "num_violations": 1,
+    "passes": true
+  },
+  "off_target": {
+    "num_off_targets": 4,
+    "avg_affinity_offtarget": -6.1,
+    "selectivity_index": 6.5
+  }
+}
