@@ -1,0 +1,51 @@
+# --- Module Weights ---
+# Define how much each module contributes to the final score (out of 100 total)
+weights:
+  docking: 25
+  adme_pk: 20
+  toxicity: 20
+  druggability: 10
+  drug_likeness: 10
+  off_target: 15
+
+# --- Scoring Thresholds ---
+thresholds:
+
+  docking:
+    # Docking affinity thresholds (lower = better)
+    affinity:
+      high: -9.0
+      medium: -7.5
+      low: -6.0
+    rmsd_max: 3.0           # RMSD must be below this for full score
+    min_poses: 3            # Minimum number of stable poses required
+
+  adme_pk:
+    logP_range: [0, 5]      # Acceptable lipophilicity range
+    half_life_min: 2.0      # Minimum half-life in hours
+    cyp_inhibition_penalty: -5  # Penalty if CYP inhibition is detected
+    clearance_acceptable: ["acceptable"]  # Accepted clearance level
+
+  toxicity:
+    override_models: ["DILIrank", "ProTox-II"]  # Models that trigger immediate risk
+    max_flags_allowed: 2                        # More than this = automatic no-go
+
+  druggability:
+    high_score: 0.7        # Score above this = high confidence
+    mid_score: 0.5         # Minimum acceptable pocket score
+    bonus_volume_min: 400  # Volume threshold for bonus
+    bonus_hydrophobicity_min: 0.5  # Hydrophobicity bonus threshold
+    volume_hydrophobicity_bonus: 2 # Bonus points for both
+
+  drug_likeness:
+    # Score assigned based on how many violations (e.g., Lipinski)
+    score_by_violations:
+      0: 10
+      1: 5
+      2: 0
+
+  off_target:
+    # Selectivity Index thresholds for scoring tiers
+    si_thresholds: [2, 5, 10]     # >2 = low, >5 = mid, >10 = ideal
+    low_target_bonus_threshold: 5 # If <5 off-targets → bonus points
+    low_target_bonus: 3           # Bonus points if off-targets are low
