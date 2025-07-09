@@ -23,7 +23,7 @@ thresholds:
   adme_pk:
     logP_range: [0, 5]      # Acceptable lipophilicity range
     half_life_min: 2.0      # Minimum half-life in hours
-    cyp_inhibition_penalty: -5  # Penalty if CYP inhibition is detected
+    penalty_if_CYP_inhibited: 5  # Penalty if CYP inhibition is detected
     clearance_acceptable: ["acceptable"]  # Accepted clearance level
 
   toxicity:
@@ -49,3 +49,4 @@ thresholds:
     si_thresholds: [2, 5, 10]     # >2 = low, >5 = mid, >10 = ideal
     low_target_bonus_threshold: 5 # If <5 off-targets → bonus points
     low_target_bonus: 3           # Bonus points if off-targets are low
+    
