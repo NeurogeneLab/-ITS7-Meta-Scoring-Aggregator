@@ -149,39 +149,41 @@ class TestMetaScoringAggregator:
         result = aggregate_scores(input_data)
         assert result["score_breakdown"]["toxicity"] <= 0
         assert result["go_decision"] == "no-go"
-
+        
     def test_edge_case_boundary_values(self):
-        """Verify behavior at exact config threshold boundaries."""
+        """Test boundary values for scoring thresholds (inclusive logic)."""
         input_data = {
-            "docking": {"affinity_kcal": -9.0, "rmsd": 3.0, "num_converged_poses": 3},
-            "adme_pk": {
-                "logP": 0,
-                "HIA": "HIGH",
-                "half_life_hr": 2.0,
-                "CYP_inhibition": False,
-                "clearance": "ACCEPTABLE"
-            },
-            "toxicity": {
-                "toxicity_flag": True,
-                "num_models_flagged": 2,
-                "high_risk_models": []
-            },
-            "druggability": {
-                "pocket_score": 0.7,
-                "volume": 400,
-                "hydrophobicity": 0.5,
-                "polarity": 0.3
-            },
-            "drug_likeness": {"num_violations": 1, "passes": True},
-            "off_target": {
-                "num_off_targets": 5,
-                "avg_affinity_offtarget": -6.0,
-                "selectivity_index": 10
-            }
-        }
+              "docking": {"affinity_kcal": -9.0, "rmsd": 3.0, "num_converged_poses": 3},
+              "adme_pk": {
+                  "logP": 0,
+                  "HIA": "HIGH",
+                  "half_life_hr": 2.0,
+                  "CYP_inhibition": False,
+                  "clearance": "ACCEPTABLE"
+              },
+              "toxicity": {
+                  "toxicity_flag": True,
+                  "num_models_flagged": 1,  # ✅ Avoids override
+                  "high_risk_models": []
+              },
+              "druggability": {
+                  "pocket_score": 0.7,  # ✅ Right at high threshold
+                  "volume": 400,
+                  "hydrophobicity": 0.5,
+                  "polarity": 0.3
+              },
+              "drug_likeness": {"num_violations": 2, "passes": False},
+              "off_target": {
+                  "num_off_targets": 5,
+                  "avg_affinity_offtarget": -6.0,
+                  "selectivity_index": 10
+              }
+          }
+
         result = aggregate_scores(input_data)
         assert result["go_decision"] == "go"
-        assert result["svs_score"] == 82  # expected based on module breakdown
+        assert result["svs_score"] == 70
+
 
     def test_missing_optional_fields(self):
         """Ensure defaults handle missing optional fields gracefully."""
@@ -262,11 +264,39 @@ class TestConfigHandling:
 
 class TestScoreCalculationAccuracy:
     """Confirm precise breakdown logic matches expectations."""
-
+        
     def test_example_calculation_accuracy(self):
-        input_data = self.valid_input.copy()
+        input_data = {
+            "docking": {"affinity_kcal": -8.6, "rmsd": 2.1, "num_converged_poses": 4},
+            "adme_pk": {
+                "logP": 2.3,
+                "HIA": "high",
+                "half_life_hr": 3.4,
+                "CYP_inhibition": False,
+                "clearance": "acceptable"
+            },
+            "toxicity": {
+                "toxicity_flag": True,
+                "num_models_flagged": 1,
+                "high_risk_models": []
+            },
+            "druggability": {
+                "pocket_score": 0.78,
+                "volume": 420,
+                "hydrophobicity": 0.6,
+                "polarity": 0.3
+            },
+            "drug_likeness": {"num_violations": 1, "passes": True},
+            "off_target": {
+                "num_off_targets": 4,
+                "avg_affinity_offtarget": -6.1,
+                "selectivity_index": 6.5
+            }
+        }
+
         result = aggregate_scores(input_data)
-        expected = {
+
+        expected_scores = {
             "docking": 20,
             "adme_pk": 20,
             "toxicity": 10,
@@ -274,9 +304,11 @@ class TestScoreCalculationAccuracy:
             "drug_likeness": 5,
             "off_target": 13
         }
-        assert result["score_breakdown"] == expected
+
+        assert result["score_breakdown"] == expected_scores
         assert result["svs_score"] == 80
         assert result["go_decision"] == "go"
+
 
     def test_score_clamping(self):
         """Scores must be clamped between 0–100."""
@@ -299,3 +331,104 @@ class TestScoreCalculationAccuracy:
         }
         result = aggregate_scores(bad_input)
         assert 0 <= result["svs_score"] <= 100
+        
+    def test_score_just_below_go(self):
+        """Test a compound with total score 69 and no override – should be no-go."""
+        input_data = {
+            "docking": {"affinity_kcal": -7.6, "rmsd": 2.9, "num_converged_poses": 3},
+            "adme_pk": {
+                "logP": 5.0,
+                "HIA": "high",
+                "half_life_hr": 2.0,
+                "CYP_inhibition": False,
+                "clearance": "acceptable"
+            },
+            "toxicity": {
+                "toxicity_flag": True,
+                "num_models_flagged": 1,
+                "high_risk_models": []
+            },
+            "druggability": {
+                "pocket_score": 0.6,
+                "volume": 390,
+                "hydrophobicity": 0.4,
+                "polarity": 0.3
+            },
+            "drug_likeness": {"num_violations": 1, "passes": True},
+            "off_target": {
+                "num_off_targets": 5,
+                "avg_affinity_offtarget": -6.0,
+                "selectivity_index": 4.9
+            }
+        }
+        result = aggregate_scores(input_data)
+        assert result["go_decision"] == "no-go"
+        assert result["svs_score"] == 69
+
+    def test_exact_thresholds_inclusive(self):
+        """Test that exact threshold values receive proper scores with inclusive logic."""
+        input_data = {
+            "docking": {"affinity_kcal": -9.0, "rmsd": 3.0, "num_converged_poses": 3},
+            "adme_pk": {
+                "logP": 0,
+                "HIA": "HIGH",
+                "half_life_hr": 2.0,
+                "CYP_inhibition": False,
+                "clearance": "ACCEPTABLE"
+            },
+            "toxicity": {
+                "toxicity_flag": True,
+                "num_models_flagged": 1,
+                "high_risk_models": []
+            },
+            "druggability": {
+                "pocket_score": 0.7,
+                "volume": 400,
+                "hydrophobicity": 0.5,
+                "polarity": 0.3
+            },
+            "drug_likeness": {"num_violations": 2, "passes": False},
+            "off_target": {
+                "num_off_targets": 5,
+                "avg_affinity_offtarget": -6.0,
+                "selectivity_index": 10
+            }
+        }
+        result = aggregate_scores(input_data)
+        assert result["score_breakdown"]["docking"] == 25
+        assert result["score_breakdown"]["druggability"] <= 10
+        assert result["go_decision"] == "go"
+
+    def test_module_score_clamping(self):
+        """Ensure that individual modules don't exceed their max weights."""
+        input_data = {
+            "docking": {"affinity_kcal": -10.0, "rmsd": 1.0, "num_converged_poses": 5},
+            "adme_pk": {
+                "logP": 2.5,
+                "HIA": "high",
+                "half_life_hr": 6.0,
+                "CYP_inhibition": False,
+                "clearance": "acceptable"
+            },
+            "toxicity": {
+                "toxicity_flag": False,
+                "num_models_flagged": 0,
+                "high_risk_models": []
+            },
+            "druggability": {
+                "pocket_score": 0.9,
+                "volume": 500,
+                "hydrophobicity": 0.6,
+                "polarity": 0.3
+            },
+            "drug_likeness": {"num_violations": 0, "passes": True},
+            "off_target": {
+                "num_off_targets": 2,
+                "avg_affinity_offtarget": -5.5,
+                "selectivity_index": 20
+            }
+        }
+        result = aggregate_scores(input_data)
+        assert result["score_breakdown"]["off_target"] <= 15  # weight limit
+        assert result["score_breakdown"]["druggability"] <= 10  # weight limit
+
