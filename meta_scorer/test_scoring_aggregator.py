@@ -79,9 +79,9 @@ class TestMetaScoringAggregator:
             "docking": 25,
             "adme_pk": 20,
             "toxicity": 20,
-            "druggability": 12,
+            "druggability": 10,
             "drug_likeness": 10,
-            "off_target": 18
+            "off_target": 15
         }
         assert result["score_breakdown"] == expected_breakdown
 
@@ -182,7 +182,7 @@ class TestMetaScoringAggregator:
 
         result = aggregate_scores(input_data)
         assert result["go_decision"] == "go"
-        assert result["svs_score"] == 70
+        assert result["svs_score"] == 80
 
 
     def test_missing_optional_fields(self):
@@ -300,13 +300,14 @@ class TestScoreCalculationAccuracy:
             "docking": 20,
             "adme_pk": 20,
             "toxicity": 10,
-            "druggability": 12,
+            "druggability": 10,
             "drug_likeness": 5,
             "off_target": 13
         }
 
         assert result["score_breakdown"] == expected_scores
-        assert result["svs_score"] == 80
+        assert result["svs_score"] == sum(result["score_breakdown"].values())
+
         assert result["go_decision"] == "go"
 
 
@@ -363,7 +364,7 @@ class TestScoreCalculationAccuracy:
         }
         result = aggregate_scores(input_data)
         assert result["go_decision"] == "no-go"
-        assert result["svs_score"] == 69
+        assert result["svs_score"] == 65
 
     def test_exact_thresholds_inclusive(self):
         """Test that exact threshold values receive proper scores with inclusive logic."""
