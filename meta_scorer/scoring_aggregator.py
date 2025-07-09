@@ -123,11 +123,11 @@ class MetaScoringAggregator:
         poses = docking_data.get("num_converged_poses", 0)
         score = 0
 
-        if affinity < config["affinity"]["high"]:
+        if affinity <= config["affinity"]["high"]:
             score = 25
-        elif affinity < config["affinity"]["medium"]:
+        elif affinity <= config["affinity"]["medium"]:
             score = 20
-        elif affinity < config["affinity"]["low"]:
+        elif affinity <= config["affinity"]["low"]:
             score = 10
 
         if rmsd > config["rmsd_max"] or poses < config["min_poses"]:
@@ -141,12 +141,12 @@ class MetaScoringAggregator:
             score += 5
         if adme_data.get("HIA", "").lower() == "high":
             score += 5
-        if adme_data.get("half_life_hr", 0) > config["half_life_min"]:
+        if adme_data.get("half_life_hr", 0) >= config["half_life_min"]:
             score += 5
         if adme_data.get("clearance", "").lower() in [c.lower() for c in config["clearance_acceptable"]]:
             score += 5
         if adme_data.get("CYP_inhibition", False):
-            score += config["cyp_inhibition_penalty"]
+            score -= config["penalty_if_CYP_inhibited"]  # Now subtraction reads clearly
         return max(score, 0)
 
     def _score_toxicity(self, tox_data: Dict, config: Dict) -> tuple:
@@ -170,7 +170,7 @@ class MetaScoringAggregator:
 
     def _score_druggability(self, drugg_data: Dict, config: Dict) -> int:
         score = 0
-        if drugg_data.get("pocket_score", 0) > config["high_score"]:
+        if drugg_data.get("pocket_score", 0) >= config["high_score"]:
             score += 10
         elif drugg_data.get("pocket_score", 0) >= config["mid_score"]:
             score += 5
@@ -179,7 +179,7 @@ class MetaScoringAggregator:
            drugg_data.get("hydrophobicity", 0) >= config["bonus_hydrophobicity_min"]:
             score += config["volume_hydrophobicity_bonus"]
 
-        return score
+        return min(score, 10)  # ✅ Ensure module weight not exceeded
 
     def _score_drug_likeness(self, dl_data: Dict, config: Dict) -> int:
         violations = dl_data.get("num_violations", float('inf'))
@@ -192,17 +192,17 @@ class MetaScoringAggregator:
         thresholds = config["si_thresholds"]
         score = 0
 
-        if si > thresholds[2]:
+        if si >= thresholds[2]:
             score = 15
-        elif si > thresholds[1]:
+        elif si >= thresholds[1]:
             score = 10
-        elif si > thresholds[0]:
+        elif si >= thresholds[0]:
             score = 5
 
         if ot_data.get("num_off_targets", float('inf')) < config["low_target_bonus_threshold"]:
             score += config["low_target_bonus"]
 
-        return score
+        return min(score, 15)  # ✅ Cap at max weight
 
 
 # Public interface function with logging setup
